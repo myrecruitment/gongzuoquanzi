@@ -124,10 +124,10 @@
             transform: translateY(0);
         }
 
-        .footer {
-            margin-top: 32px;
-            color: #9ca3af;
-            font-size: 14px;
+        .cta-button:disabled {
+            opacity: 0.7;
+            transform: none;
+            cursor: not-allowed;
         }
 
         .status {
@@ -143,24 +143,13 @@
             color: #065f46;
             border: 1px solid #a7f3d0;
         }
-        
+
         .status.error {
             background: #fef2f2;
             color: #991b1b;
             border: 1px solid #fecaca;
         }
-        
-        .status-link {
-            color: #065f46;
-            text-decoration: underline;
-            font-weight: 600;
-            cursor: pointer;
-        }
-        
-        .status-link:hover {
-            color: #047857;
-        }
-        
+
         .fallback-container {
             margin-top: 20px;
             background: #fffbeb;
@@ -169,7 +158,7 @@
             border: 1px solid #fde68a;
             display: none;
         }
-        
+
         .fallback-link {
             display: block;
             margin-top: 10px;
@@ -178,9 +167,15 @@
             text-decoration: none;
             font-weight: 500;
         }
-        
+
         .fallback-link:hover {
             text-decoration: underline;
+        }
+
+        .footer {
+            margin-top: 32px;
+            color: #9ca3af;
+            font-size: 14px;
         }
 
         @media (max-width: 480px) {
@@ -261,6 +256,86 @@
         
         // 状态管理
         let whatsappClicked = false;
+        let pixelReady = false;
+        
+        // 检查Pixel是否准备就绪
+        function checkPixelReady() {
+            return typeof fbq !== 'undefined' && typeof fbq.loaded !== 'undefined' && fbq.loaded;
+        }
+        
+        // 等待Pixel准备就绪
+        function waitForPixel(callback, maxWait = 5000) {
+            const startTime = Date.now();
+            
+            function check() {
+                if (checkPixelReady()) {
+                    pixelReady = true;
+                    callback();
+                } else if (Date.now() - startTime < maxWait) {
+                    setTimeout(check, 100);
+                } else {
+                    console.warn('⚠️ Pixel加载超时，使用备用方案');
+                    callback();
+                }
+            }
+            
+            check();
+        }
+        
+        // 追踪WhatsApp点击 - 核心追踪函数
+        function trackWhatsAppClick() {
+            console.log('🚀 开始追踪WhatsApp点击...');
+            
+            if (typeof fbq === 'undefined') {
+                console.error('❌ Facebook Pixel 未加载');
+                return;
+            }
+            
+            try {
+                // 发送Lead事件
+                fbq('track', 'Lead', {
+                    content_name: 'WhatsApp联系',
+                    content_category: '招聘咨询',
+                    value: 20.00,
+                    currency: 'USD'
+                });
+                
+                console.log('✅ WhatsApp点击Lead事件已发送');
+                
+                // 备用发送机制
+                setTimeout(() => {
+                    try {
+                        fbq('track', 'Lead', {
+                            content_name: 'WhatsApp联系',
+                            content_category: '招聘咨询',
+                            value: 20.00,
+                            currency: 'USD'
+                        });
+                        console.log('✅ 备用Lead事件已发送');
+                    } catch (e) {
+                        console.log('备用发送失败:', e);
+                    }
+                }, 500);
+                
+            } catch (error) {
+                console.error('❌ 追踪事件失败:', error);
+                
+                // 延迟重试
+                setTimeout(() => {
+                    try {
+                        fbq('track', 'Lead', {
+                            content_name: 'WhatsApp联系',
+                            content_category: '招聘咨询',
+                            value: 20.00,
+                            currency: 'USD'
+                        });
+                        console.log('✅ 重试Lead事件已发送');
+                    } catch (retryError) {
+                        console.error('❌ 重试也失败:', retryError);
+                    }
+                }, 1000);
+            }
+        }
         
         // 显示状态信息
         function showStatus(message, type, autoHide = true) {
@@ -276,90 +351,12 @@
             }
         }
         
-        // 追踪WhatsApp点击 - 核心追踪函数
-        function trackWhatsAppClick() {
-            if (typeof fbq === 'undefined') {
-                console.error('❌ Facebook Pixel 未加载');
-                return;
-            }
-            
-            try {
-                // Lead事件 - 主要转化追踪
-                fbq('track', 'Lead', {
-                    content_name: 'WhatsApp联系',
-                    content_category: '招聘咨询',
-                    value: 20.00,
-                    currency: 'USD'
-                });
-                
-                console.log('✅ WhatsApp点击事件已追踪');
-                
-            } catch (error) {
-                console.error('❌ 追踪事件失败:', error);
-            }
-        }
-        
-        // 优化后的WhatsApp联系函数
-        function contactWhatsApp() {
-            console.log('🚀 用户点击WhatsApp联系');
-            
-            // 防止重复点击
-            if (whatsappClicked) {
-                console.log('⚠️ 重复点击，忽略');
-                return;
-            }
-            whatsappClicked = true;
-            
-            // 追踪WhatsApp点击事件
-            trackWhatsAppClick();
-            
-            // 显示加载状态
-            showStatus('正在跳转到WhatsApp...', 'success');
-            
-            // 方法1: 尝试直接在当前窗口打开（移动端友好）
-            try {
-                window.location.href = WHATSAPP_LINK;
-                return;
-            } catch (e) {
-                console.log('方法1失败', e);
-            }
-            
-            // 方法2: 尝试在新窗口打开（桌面端友好）
-            try {
-                const newWindow = window.open(WHATSAPP_LINK, '_blank');
-                if (newWindow && !newWindow.closed) {
-                    return;
-                }
-            } catch (e) {
-                console.log('方法2失败', e);
-            }
-            
-            // 方法3: 使用a标签模拟点击
-            try {
-                const link = document.createElement('a');
-                link.href = WHATSAPP_LINK;
-                link.target = '_blank';
-                link.rel = 'noopener noreferrer';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                return;
-            } catch (e) {
-                console.log('方法3失败', e);
-            }
-            
-            // 如果所有方法都失败，显示备用方案
-            showFallbackOption();
-        }
-        
         // 显示备用方案
         function showFallbackOption() {
             console.log('显示WhatsApp备用方案');
             
-            // 显示错误状态
             showStatus('跳转失败，请手动打开WhatsApp', 'error', false);
             
-            // 显示备用链接容器
             const fallbackContainer = document.getElementById('fallbackContainer');
             const fallbackLink = document.getElementById('whatsappFallbackLink');
             
@@ -368,19 +365,69 @@
             fallbackContainer.style.display = 'block';
         }
         
+        // WhatsApp联系函数
+        function contactWhatsApp() {
+            console.log('👆 用户点击WhatsApp按钮');
+            
+            // 防止重复点击
+            if (whatsappClicked) {
+                console.log('⚠️ 重复点击，忽略');
+                return;
+            }
+            whatsappClicked = true;
+            
+            // 禁用按钮防止重复点击
+            const button = document.getElementById('whatsappButton');
+            button.disabled = true;
+            button.textContent = '正在跳转...';
+            
+            // 追踪事件
+            trackWhatsAppClick();
+            
+            // 显示加载状态
+            showStatus('正在跳转到WhatsApp...', 'success');
+            
+            // 延迟跳转确保事件发送
+            setTimeout(() => {
+                try {
+                    // 方法1: 直接在当前窗口打开（移动端友好）
+                    if (/Mobi|Android/i.test(navigator.userAgent)) {
+                        window.location.href = WHATSAPP_LINK;
+                        return;
+                    }
+                    
+                    // 方法2: 新窗口打开（桌面端友好）
+                    const newWindow = window.open(WHATSAPP_LINK, '_blank', 'noopener,noreferrer');
+                    if (!newWindow || newWindow.closed) {
+                        throw new Error('弹窗被阻止');
+                    }
+                    
+                } catch (error) {
+                    console.log('跳转失败，显示备用方案:', error);
+                    showFallbackOption();
+                } finally {
+                    // 重新启用按钮
+                    setTimeout(() => {
+                        button.disabled = false;
+                        button.textContent = '开始咨询';
+                        whatsappClicked = false;
+                    }, 3000);
+                }
+            }, 300); // 300ms延迟确保事件发送
+        }
+        
         // 页面加载完成
         window.addEventListener('load', function() {
             console.log('📱 招聘页面加载完成');
             
-            // 添加事件监听器
-            document.getElementById('whatsappButton').addEventListener('click', contactWhatsApp);
-            
-            // 验证Pixel状态
-            if (typeof fbq !== 'undefined') {
-                console.log('✅ Facebook Pixel 已正确加载');
-            } else {
-                console.error('❌ Facebook Pixel 加载失败');
-            }
+            // 等待Pixel准备就绪
+            waitForPixel(() => {
+                console.log('✅ Facebook Pixel 准备就绪');
+                
+                // 添加事件监听器
+                document.getElementById('whatsappButton').addEventListener('click', contactWhatsApp);
+                
+            });
         });
         
         // 监听页面离开 - 检测WhatsApp使用
@@ -394,6 +441,13 @@
         window.addEventListener('blur', function() {
             if (whatsappClicked) {
                 console.log('📱 窗口失焦 - 用户可能在使用WhatsApp');
+            }
+        });
+        
+        // 页面可见性变化监听
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden && whatsappClicked) {
+                console.log('📱 页面隐藏 - 用户可能在使用WhatsApp');
             }
         });
     </script>
