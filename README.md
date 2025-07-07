@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>助理招聘</title>
+    <title>居家助理招聘</title>
     <style>
         * {
             margin: 0;
@@ -143,6 +143,45 @@
             color: #065f46;
             border: 1px solid #a7f3d0;
         }
+        
+        .status.error {
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+        
+        .status-link {
+            color: #065f46;
+            text-decoration: underline;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        
+        .status-link:hover {
+            color: #047857;
+        }
+        
+        .fallback-container {
+            margin-top: 20px;
+            background: #fffbeb;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #fde68a;
+            display: none;
+        }
+        
+        .fallback-link {
+            display: block;
+            margin-top: 10px;
+            word-break: break-all;
+            color: #065f46;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .fallback-link:hover {
+            text-decoration: underline;
+        }
 
         @media (max-width: 480px) {
             .container {
@@ -180,11 +219,16 @@
             </div>
         </div>
 
-        <button class="cta-button" onclick="contactWhatsApp()">
+        <button class="cta-button" id="whatsappButton">
             开始咨询
         </button>
 
         <div class="status" id="status"></div>
+        
+        <div class="fallback-container" id="fallbackContainer">
+            <p>您的浏览器阻止了自动跳转，请手动点击下方链接：</p>
+            <a href="#" class="fallback-link" id="whatsappFallbackLink" target="_blank"></a>
+        </div>
 
         <div class="footer">
             <p>点击按钮将通过WhatsApp与我们的招聘顾问取得联系</p>
@@ -213,30 +257,23 @@
 
     <script>
         // 配置
-        const WHATSAPP_LINK = 'wa.link/gongzuquanzi';
+        const WHATSAPP_LINK = 'https://wa.link/gongzuquanzi';
         
         // 状态管理
         let whatsappClicked = false;
         
-        // WhatsApp 联系函数 - 唯一的追踪点
-        function contactWhatsApp() {
-            console.log('🚀 用户点击WhatsApp联系');
+        // 显示状态信息
+        function showStatus(message, type, autoHide = true) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+            statusDiv.style.display = 'block';
             
-            // 防止重复点击
-            if (whatsappClicked) {
-                console.log('⚠️ 重复点击，忽略');
-                return;
+            if (autoHide) {
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 3000);
             }
-            whatsappClicked = true;
-            
-            // 追踪WhatsApp点击事件
-            trackWhatsAppClick();
-            
-            // 跳转到WhatsApp
-            window.open(WHATSAPP_LINK, '_blank', 'noopener,noreferrer');
-            
-            // 显示成功状态
-            showStatus('正在跳转到WhatsApp...', 'success');
         }
         
         // 追踪WhatsApp点击 - 核心追踪函数
@@ -262,22 +299,81 @@
             }
         }
         
-        // 显示状态信息
-        function showStatus(message, type) {
-            const statusDiv = document.getElementById('status');
-            statusDiv.textContent = message;
-            statusDiv.className = `status ${type}`;
-            statusDiv.style.display = 'block';
+        // 优化后的WhatsApp联系函数
+        function contactWhatsApp() {
+            console.log('🚀 用户点击WhatsApp联系');
             
-            // 3秒后隐藏
-            setTimeout(() => {
-                statusDiv.style.display = 'none';
-            }, 3000);
+            // 防止重复点击
+            if (whatsappClicked) {
+                console.log('⚠️ 重复点击，忽略');
+                return;
+            }
+            whatsappClicked = true;
+            
+            // 追踪WhatsApp点击事件
+            trackWhatsAppClick();
+            
+            // 显示加载状态
+            showStatus('正在跳转到WhatsApp...', 'success');
+            
+            // 方法1: 尝试直接在当前窗口打开（移动端友好）
+            try {
+                window.location.href = WHATSAPP_LINK;
+                return;
+            } catch (e) {
+                console.log('方法1失败', e);
+            }
+            
+            // 方法2: 尝试在新窗口打开（桌面端友好）
+            try {
+                const newWindow = window.open(WHATSAPP_LINK, '_blank');
+                if (newWindow && !newWindow.closed) {
+                    return;
+                }
+            } catch (e) {
+                console.log('方法2失败', e);
+            }
+            
+            // 方法3: 使用a标签模拟点击
+            try {
+                const link = document.createElement('a');
+                link.href = WHATSAPP_LINK;
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                return;
+            } catch (e) {
+                console.log('方法3失败', e);
+            }
+            
+            // 如果所有方法都失败，显示备用方案
+            showFallbackOption();
+        }
+        
+        // 显示备用方案
+        function showFallbackOption() {
+            console.log('显示WhatsApp备用方案');
+            
+            // 显示错误状态
+            showStatus('跳转失败，请手动打开WhatsApp', 'error', false);
+            
+            // 显示备用链接容器
+            const fallbackContainer = document.getElementById('fallbackContainer');
+            const fallbackLink = document.getElementById('whatsappFallbackLink');
+            
+            fallbackLink.href = WHATSAPP_LINK;
+            fallbackLink.textContent = WHATSAPP_LINK;
+            fallbackContainer.style.display = 'block';
         }
         
         // 页面加载完成
         window.addEventListener('load', function() {
             console.log('📱 招聘页面加载完成');
+            
+            // 添加事件监听器
+            document.getElementById('whatsappButton').addEventListener('click', contactWhatsApp);
             
             // 验证Pixel状态
             if (typeof fbq !== 'undefined') {
