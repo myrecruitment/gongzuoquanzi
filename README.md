@@ -6,6 +6,7 @@
     <title>居家行政助理招聘 | 兼职全职均可</title>
     <meta name="description" content="Marriott Bonvoy Hotels招聘居家行政助理，月薪RM5000-8000+，弹性工作时间，无需经验，免费培训">
     <style>
+        /* 保持原有的CSS样式不变 */
         * {
             margin: 0;
             padding: 0;
@@ -612,8 +613,8 @@
             <h3>📞 确认咨询意向</h3>
             <p>您确定要了解这个工作机会吗？我们的招聘顾问将为您详细介绍岗位信息和薪资待遇。</p>
             <div class="intent-buttons">
-                <button class="intent-btn primary" onclick="confirmIntent()">确定咨询</button>
-                <button class="intent-btn secondary" onclick="cancelIntent()">再想想</button>
+                <button class="intent-btn primary" id="confirmIntentBtn">确定咨询</button>
+                <button class="intent-btn secondary" id="cancelIntentBtn">再想想</button>
             </div>
         </div>
     </div>
@@ -748,20 +749,20 @@
                             console.log('🔄 回退到网页版');
                             window.open(WHATSAPP_LINK, '_blank');
                         }
-                    }, 1000);
+                    }, 500);
                     
-                    // 清理iframe
+                    // 移除iframe
                     setTimeout(() => {
                         if (document.body.contains(iframe)) {
                             document.body.removeChild(iframe);
                         }
-                    }, 3000);
+                    }, 2000);
                 } else {
                     console.log('💻 桌面设备 - 网页版');
                     window.open(WHATSAPP_LINK, '_blank');
                 }
                 
-                // 延迟3秒后追踪Lead事件（确保用户真的进入了WhatsApp）
+                // 延迟3秒后追踪Lead事件
                 setTimeout(() => {
                     trackConsultationClick(currentButtonSource);
                 }, 3000);
@@ -843,12 +844,37 @@
             button.disabled = true;
             button.innerHTML = '🤔 请确认意向...';
             
-            // 意图检测逻辑
-            if (timeOnPage < 8000) {
-                // 停留时间少于8秒，显示确认弹窗
-                console.log('⚠️ 页面停留时间较短，显示意图确认');
-                document.getElementById('intentModal').classList.add('show');
-            } else {
-                // 停留时间足够，直接跳转
-                console.log('✅ 页面停留时间充足，直接执行');
-                button.innerHTML = '
+            // 意图检测逻辑 - 总是显示确认弹窗
+            console.log('⚠️ 显示意图确认');
+            document.getElementById('intentModal').classList.add('show');
+        }
+        
+        // 页面加载完成
+        window.addEventListener('load', function() {
+            console.log('📱 招聘页面加载完成');
+            
+            // 初始化按钮事件
+            document.querySelectorAll('.whatsapp-btn').forEach(button => {
+                button.addEventListener('click', contactWhatsApp);
+            });
+            
+            // 设置弹窗按钮事件
+            document.getElementById('confirmIntentBtn').addEventListener('click', confirmIntent);
+            document.getElementById('cancelIntentBtn').addEventListener('click', cancelIntent);
+            
+            // 设置备用链接
+            document.getElementById('whatsappFallbackLink').href = WHATSAPP_LINK;
+            document.getElementById('whatsappFallbackLink').textContent = WHATSAPP_LINK;
+            
+            // 检查Pixel加载状态
+            setTimeout(() => {
+                if (typeof fbq !== 'undefined') {
+                    console.log('✅ Facebook Pixel 已加载');
+                } else {
+                    console.error('❌ Facebook Pixel 加载失败');
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
